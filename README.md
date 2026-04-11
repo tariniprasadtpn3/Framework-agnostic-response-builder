@@ -1,4 +1,4 @@
-`# Framework-agnostic-response-builder
+# Framework-agnostic-response-builder
 Framework Agnostic Response Builder
 
 framework-agnostic-response-builder/
@@ -13,4 +13,3 @@ framework-agnostic-response-builder/
 │       ├── flask.py       ← Flask adapter
 │       ├── fastapi.py     ← FastAPI adapter
 │       └── plain.py       ← Plain dict/JSON (for scripts, Celery, etc.)
-`
