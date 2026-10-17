@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Framework-agnostic Response Builder
 
 One consistent JSON response envelope for Django, Flask, FastAPI and plain Python
@@ -145,3 +146,20 @@ tests/
 pip install -e ".[test]"
 pytest
 ```
+=======
+# Framework-agnostic-response-builder
+Framework Agnostic Response Builder
+
+framework-agnostic-response-builder/
+├── response/
+│   ├── __init__.py
+│   ├── enums.py           ← HttpStatus enum (unchanged)
+│   ├── schema.py          ← ResponseSchema + ExceptionInfo (unchanged)
+│   ├── core.py            ← Pure Python core (NO framework dependency)
+│   └── adapters/
+│       ├── __init__.py
+│       ├── django.py      ← Django adapter
+│       ├── flask.py       ← Flask adapter
+│       ├── fastapi.py     ← FastAPI adapter
+│       └── plain.py       ← Plain dict/JSON (for scripts, Celery, etc.)
+>>>>>>> 0f6475faf1ad1c6b5767c374ce21ea0b0f60fc18
