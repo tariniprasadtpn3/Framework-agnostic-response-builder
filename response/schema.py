@@ -7,8 +7,10 @@ from __future__ import annotations
 
 import os
 import sys
+import traceback
 from dataclasses import dataclass, field
-from typing import Any, Union
+from types import TracebackType
+from typing import Any, Dict, List, Optional, Type, Union
 
 from .enums import HttpStatus
 
@@ -16,14 +18,15 @@ from .enums import HttpStatus
 @dataclass(frozen=True)
 class ResponseSchema:
     """
-    Immutable, typed response envelope.
+    Typed response envelope.
 
     Every API response — success or failure — must conform to this schema.
-    `frozen=True` prevents accidental mutation after construction.
+    `frozen=True` prevents reassigning fields; `metadata` and `errors` are
+    copied on construction so later changes to the caller's objects don't leak in.
 
     Attributes:
-        http_status   : The HTTP status code (HttpStatus enum).
-        internal_code : Internal business/system status code.
+        http_status   : The HTTP status code (HttpStatus member or int).
+        internal_code : Internal business/system status code. Serialized as "status".
         message       : Human-readable response message.
         data          : Response payload. Empty list `[]` for errors.
         metadata      : Supplementary pagination/context info.
@@ -31,20 +34,24 @@ class ResponseSchema:
         trace_id      : Optional request trace ID for observability.
     """
 
-    http_status: HttpStatus
+    http_status: Union[HttpStatus, int]
     message: str
     internal_code: int
     data: Any = field(default_factory=list)
-    metadata: dict[str, Any] = field(default_factory=dict)
-    errors: list[dict[str, Any]] = field(default_factory=list)
-    trace_id: Union[str, None] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    errors: List[Dict[str, Any]] = field(default_factory=list)
+    trace_id: Optional[str] = None
 
-    def to_dict(self) -> dict[str, Any]:
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "metadata", dict(self.metadata))
+        object.__setattr__(self, "errors", list(self.errors))
+
+    def to_dict(self) -> Dict[str, Any]:
         """
         Serializes the schema to a response-safe dictionary.
-        None values are excluded to keep the response clean.
+        Empty metadata/errors and a None trace_id are omitted.
         """
-        payload: dict[str, Any] = {
+        payload: Dict[str, Any] = {
             "status": self.internal_code,
             "message": self.message,
             "data": self.data,
@@ -68,31 +75,47 @@ class ExceptionInfo:
     Captures structured exception context for logging and error responses.
     """
 
-    exc_type: Union[type, None]
+    exc_type: Optional[Type[BaseException]]
     filename: str
     line_number: int
-    detail: Union[str, None] = None
+    detail: Optional[str] = None
 
     @classmethod
-    def capture(cls) -> "ExceptionInfo":
-        """Captures the current exception context from sys.exc_info()."""
-        exc_type, exc_value, exc_tb = sys.exc_info()
-        filename = (
-            os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            if exc_tb
-            else "unknown"
-        )
+    def capture(cls, exc: Optional[BaseException] = None) -> "ExceptionInfo":
+        """
+        Captures context from `exc`, or from the exception currently being
+        handled (sys.exc_info()) when `exc` is omitted.
+        The file/line reported is where the exception was raised.
+        """
+        if exc is not None:
+            exc_type: Optional[Type[BaseException]] = type(exc)
+            exc_tb: Optional[TracebackType] = exc.__traceback__
+        else:
+            exc_type, exc, exc_tb = sys.exc_info()
+
+        if exc_tb is not None:
+            raise_site = traceback.extract_tb(exc_tb)[-1]
+            filename = os.path.basename(raise_site.filename)
+            line_number = raise_site.lineno or 0
+        else:
+            filename, line_number = "unknown", 0
+
         return cls(
             exc_type=exc_type,
             filename=filename,
-            line_number=exc_tb.tb_lineno if exc_tb else 0,
-            detail=str(exc_value) if exc_value else None,
+            line_number=line_number,
+            detail=str(exc) if exc is not None else None,
         )
 
-    def to_error_dict(self) -> dict[str, Any]:
-        return {
+    def to_error_dict(self, include_debug: bool = False) -> Dict[str, Any]:
+        """
+        Returns an entry for the response `errors` list.
+        File, line and the exception message can expose internals, so they are
+        only included when `include_debug` is True (e.g. DEBUG builds or logs).
+        """
+        error: Dict[str, Any] = {
             "type": self.exc_type.__name__ if self.exc_type else "UnknownError",
-            "file": self.filename,
-            "line": self.line_number,
-            "detail": self.detail,
         }
+        if include_debug:
+            error.update(file=self.filename, line=self.line_number, detail=self.detail)
+        return error

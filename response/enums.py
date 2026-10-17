@@ -9,7 +9,7 @@ from enum import Enum
 class HttpStatus(int, Enum):
     """
     Strongly-typed HTTP status codes with built-in message resolution.
-    Inherits from int for direct Django JsonResponse compatibility.
+    Inherits from int so members can be passed anywhere a status code is expected.
     """
 
     # 2xx — Success
@@ -31,6 +31,8 @@ class HttpStatus(int, Enum):
     METHOD_NOT_ALLOWED = 405
     REQUEST_TIMEOUT = 408
     CONFLICT = 409
+    UNPROCESSABLE_ENTITY = 422
+    TOO_MANY_REQUESTS = 429
 
     # 5xx — Server Errors
     INTERNAL_SERVER_ERROR = 500
@@ -76,6 +78,8 @@ _STATUS_MESSAGES: dict[int, str] = {
     405: "Method Not Allowed",
     408: "Request Timed Out",
     409: "Conflict",
+    422: "Unprocessable Entity",
+    429: "Too Many Requests",
     500: "Internal Server Error",
     501: "Not Implemented",
     502: "Bad Gateway Error",

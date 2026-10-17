@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "framework-agnostic-response-builder"
+version = "0.1.0"
+description = "Consistent JSON response envelopes for Django, Flask, FastAPI and plain Python."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+django = ["django>=3.2"]
+flask = ["flask>=2.0"]
+fastapi = ["fastapi>=0.100"]
+test = ["pytest>=7", "django>=3.2", "flask>=2.0", "fastapi>=0.100", "httpx"]
+
+[tool.setuptools.packages.find]
+include = ["response*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
